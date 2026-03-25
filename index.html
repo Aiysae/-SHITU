@@ -8,6 +8,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入 Lucide 图标库 -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- 引入 AOS 动画库 CSS -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    
     <!-- 自定义动画与滚动变色逻辑 -->
     <style>
         /* 开启平滑滚动 */
@@ -37,6 +40,65 @@
         .mask-image-vertical {
             -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
             mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+        }
+
+        /* 导航栏隐藏状态 */
+        .navbar-hidden {
+            transform: translateY(-100%);
+        }
+
+        /* ----- 高级特效：自定义磁性光标 ----- */
+        @media (pointer: fine) {
+            body { cursor: none; } /* 仅在非触屏设备隐藏默认鼠标 */
+            a, button, input { cursor: none; }
+        }
+        .custom-cursor-dot, .custom-cursor-ring {
+            position: fixed;
+            top: 0; left: 0;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: opacity 0.3s, transform 0.1s ease-out;
+        }
+        .custom-cursor-dot {
+            width: 6px; height: 6px;
+            background-color: #06b6d4;
+            border-radius: 50%;
+        }
+        .custom-cursor-ring {
+            width: 32px; height: 32px;
+            border: 2px solid rgba(6, 182, 212, 0.4);
+            border-radius: 50%;
+            transition: width 0.3s, height 0.3s, border-color 0.3s, background-color 0.3s;
+        }
+        /* 光标悬浮时的扩大状态 */
+        .custom-cursor-ring.hovered {
+            width: 50px; height: 50px;
+            background-color: rgba(6, 182, 212, 0.1);
+            border-color: rgba(6, 182, 212, 0.8);
+            backdrop-filter: blur(2px);
+        }
+
+        /* ----- 高级特效：探照灯边框 (Glow Tracking) ----- */
+        .glow-capture {
+            position: relative;
+        }
+        .glow-capture::before {
+            content: "";
+            position: absolute;
+            inset: -2px; /* 边框粗细 */
+            border-radius: inherit;
+            background: radial-gradient(
+                600px circle at var(--mouse-x, -999px) var(--mouse-y, -999px), 
+                rgba(34, 211, 238, 0.6), 
+                transparent 40%
+            );
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .glow-capture:hover::before {
+            opacity: 1;
         }
 
         /* ----- 导航栏滚动变色状态控制 ----- */
@@ -70,7 +132,14 @@
         body.scrolled .mobile-menu-btn { color: #124360; }
     </style>
 </head>
-<body class="min-h-screen bg-white font-sans text-slate-900 selection:bg-[#124360] selection:text-white">
+<body class="min-h-screen bg-white font-sans text-slate-900 selection:bg-[#124360] selection:text-white overflow-x-hidden">
+
+    <!-- 自定义光标节点 -->
+    <div class="custom-cursor-dot hidden md:block"></div>
+    <div class="custom-cursor-ring hidden md:block"></div>
+
+    <!-- 全局背景光点 Canvas -->
+    <canvas id="ambient-canvas" class="fixed inset-0 pointer-events-none z-[40]"></canvas>
 
     <!-- 导航栏 -->
     <nav id="navbar" class="fixed w-full z-50">
@@ -78,10 +147,8 @@
             <div class="flex justify-between items-center">
                 <!-- Logo 区域 (极致放大版本) -->
                 <div class="flex items-center gap-3 sm:gap-4">
-                    <!-- 优化：盒子面积放大一倍以上，完全去掉内边距让 Logo 撑满 -->
                     <div class="w-28 h-28 sm:w-40 sm:h-40 bg-white rounded-2xl shadow-lg border border-slate-100 flex items-center justify-center overflow-hidden transition-all transform origin-left">
-                        <!-- 这里的图片需要和 HTML 文件在同一目录下 -->
-                        <img src="logo.jpg" alt="势途 SHITU Logo" class="w-full h-full object-contain" />
+                        <img src="logo.jpg" alt="势途 SHITU Logo" class="w-full h-full object-contain" onerror="this.src='https://placehold.co/400x400/124360/ffffff?text=SHITU+LOGO'" />
                     </div>
                     <div class="flex flex-col">
                         <span class="nav-logo-text text-3xl sm:text-4xl font-black tracking-tight leading-none transition-colors">SHITU</span>
@@ -140,16 +207,16 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-12 items-center">
                 
                 <!-- 左侧内容区 -->
-                <div class="pr-0 lg:pr-8">
+                <div class="pr-0 lg:pr-8" data-aos="fade-right" data-aos-duration="1000">
                     <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full glass-panel text-cyan-300 text-sm font-bold mb-8 shadow-[0_0_15px_rgba(34,211,238,0.2)]">
                         <i data-lucide="trending-up" class="w-4 h-4"></i>
                         引领 AI 搜索时代的流量红利
                     </div>
                     
-                    <h1 class="text-5xl md:text-6xl lg:text-[72px] font-black mb-4 tracking-tight leading-[1.1] text-white">
+                    <h1 class="text-5xl md:text-6xl lg:text-[72px] font-black mb-4 tracking-tight leading-[1.1] text-white" data-scramble="当客户问AI时">
                         当客户问AI时
                     </h1>
-                    <h2 class="text-4xl md:text-5xl lg:text-[56px] font-extrabold mb-8 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-200 to-blue-500">
+                    <h2 class="text-4xl md:text-5xl lg:text-[56px] font-extrabold mb-8 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-200 to-blue-500" data-scramble="您的品牌会被推荐吗？">
                         您的品牌会被推荐吗？
                     </h2>
                     
@@ -162,14 +229,14 @@
                             <i data-lucide="search" class="w-5 h-5 text-blue-200/50"></i>
                             <input type="text" placeholder="输入品牌名，免费诊断 AI 推荐率..." class="company-input w-full px-4 py-3 bg-transparent focus:outline-none text-white placeholder-blue-200/50 font-medium" required />
                         </div>
-                        <button type="submit" class="px-8 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl md:rounded-full transition-all whitespace-nowrap shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+                        <button type="submit" class="px-8 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-bold rounded-xl md:rounded-full transition-all whitespace-nowrap shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:scale-105 transform">
                             立即诊断
                         </button>
                     </form>
                 </div>
 
                 <!-- 右侧数据看板区 -->
-                <div class="relative transform perspective-1000 rotate-y-[-5deg] rotate-x-[2deg] hover:rotate-0 transition-transform duration-700 ease-out">
+                <div data-aos="fade-left" data-aos-duration="1000" data-aos-delay="200" class="relative transform perspective-1000 rotate-y-[-5deg] rotate-x-[2deg] hover:rotate-0 transition-transform duration-700 ease-out">
                     <div class="absolute inset-0 bg-blue-500/20 rounded-[2.5rem] blur-3xl transform translate-x-4 translate-y-8 -z-10"></div>
                     
                     <div class="glass-panel rounded-[2.5rem] p-8 sm:p-10 shadow-[0_30px_60px_rgba(0,0,0,0.4)] relative overflow-hidden group border-t-white/20 border-l-white/20">
@@ -181,7 +248,7 @@
                         
                         <div class="bg-black/20 rounded-3xl p-8 sm:p-10 text-center mb-6 border border-white/5 shadow-inner">
                             <div class="text-6xl sm:text-8xl font-black mb-4 tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-[#FDE047] to-yellow-600 drop-shadow-[0_0_15px_rgba(253,224,71,0.3)]">
-                                6.72<span class="text-4xl sm:text-5xl ml-1 text-[#FDE047]/80">亿</span>
+                                <span class="counter-value" data-target="6.72" data-decimals="2">0.00</span><span class="text-4xl sm:text-5xl ml-1 text-[#FDE047]/80">亿</span>
                             </div>
                             <div class="text-sm sm:text-base font-medium text-blue-200/70">
                                 全面超越传统搜索引擎增速
@@ -190,15 +257,15 @@
 
                         <div class="grid grid-cols-3 gap-4">
                             <div class="bg-white/5 rounded-2xl p-5 text-center border border-white/5 hover:bg-white/10 transition-colors cursor-default">
-                                <div class="text-2xl sm:text-3xl font-black text-white mb-1">3.1亿</div>
+                                <div class="text-2xl sm:text-3xl font-black text-white mb-1"><span class="counter-value" data-target="3.1" data-decimals="1">0.0</span>亿</div>
                                 <div class="text-xs sm:text-sm font-medium text-blue-200/60">DeepSeek</div>
                             </div>
                             <div class="bg-white/5 rounded-2xl p-5 text-center border border-white/5 hover:bg-white/10 transition-colors cursor-default">
-                                <div class="text-2xl sm:text-3xl font-black text-white mb-1">8416万</div>
+                                <div class="text-2xl sm:text-3xl font-black text-white mb-1"><span class="counter-value" data-target="8416" data-decimals="0">0</span>万</div>
                                 <div class="text-xs sm:text-sm font-medium text-blue-200/60">夸克</div>
                             </div>
                             <div class="bg-white/5 rounded-2xl p-5 text-center border border-white/5 hover:bg-white/10 transition-colors cursor-default">
-                                <div class="text-2xl sm:text-3xl font-black text-white mb-1">7261万</div>
+                                <div class="text-2xl sm:text-3xl font-black text-white mb-1"><span class="counter-value" data-target="7261" data-decimals="0">0</span>万</div>
                                 <div class="text-xs sm:text-sm font-medium text-blue-200/60">豆包</div>
                             </div>
                         </div>
@@ -212,46 +279,54 @@
     <!-- 痛点板块：企业营销困境 -->
     <section class="py-20 md:py-28 bg-slate-50 border-b border-slate-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16" data-aos="fade-up">
                 <h2 class="text-3xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">企业营销困境</h2>
                 <p class="text-lg text-slate-500 font-medium max-w-2xl mx-auto">作为企业负责人，您是否正面临这些挑战？</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <!-- 痛点 1 -->
-                <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300">
-                    <div class="mb-8">
-                        <i data-lucide="trending-down" class="w-9 h-9 text-red-500"></i>
+                <div data-aos="fade-up" data-aos-delay="0">
+                    <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300 h-full">
+                        <div class="mb-8">
+                            <i data-lucide="trending-down" class="w-9 h-9 text-red-500"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-4">获客成本越来越高</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">传统搜索引擎获客成本持续上涨，ROI不断下降</p>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-4">获客成本越来越高</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">传统搜索引擎获客成本持续上涨，ROI不断下降</p>
                 </div>
 
                 <!-- 痛点 2 -->
-                <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300">
-                    <div class="mb-8">
-                        <i data-lucide="users" class="w-9 h-9 text-orange-500"></i>
+                <div data-aos="fade-up" data-aos-delay="100">
+                    <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300 h-full">
+                        <div class="mb-8">
+                            <i data-lucide="users" class="w-9 h-9 text-orange-500"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-4">客户增长陷入瓶颈</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">存量竞争激烈，新增客户越来越难获取</p>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-4">客户增长陷入瓶颈</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">存量竞争激烈，新增客户越来越难获取</p>
                 </div>
 
                 <!-- 痛点 3 -->
-                <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300">
-                    <div class="mb-8">
-                        <i data-lucide="search" class="w-9 h-9 text-amber-500"></i>
+                <div data-aos="fade-up" data-aos-delay="200">
+                    <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300 h-full">
+                        <div class="mb-8">
+                            <i data-lucide="search" class="w-9 h-9 text-amber-500"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-4">传统营销效果递减</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">搜索广告、SEO效果不如从前，用户习惯正在改变</p>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-4">传统营销效果递减</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">搜索广告、SEO效果不如从前，用户习惯正在改变</p>
                 </div>
 
                 <!-- 痛点 4 -->
-                <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300">
-                    <div class="mb-8">
-                        <i data-lucide="alert-triangle" class="w-9 h-9 text-purple-500"></i>
+                <div data-aos="fade-up" data-aos-delay="300">
+                    <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300 h-full">
+                        <div class="mb-8">
+                            <i data-lucide="alert-triangle" class="w-9 h-9 text-purple-500"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-4">错过AI搜索新机遇</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">6.72亿AI用户正在被忽略，竞争对手已经布局</p>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-4">错过AI搜索新机遇</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">6.72亿AI用户正在被忽略，竞争对手已经布局</p>
                 </div>
             </div>
         </div>
@@ -260,24 +335,20 @@
     <!-- 免费资料领取 / Lead Magnet 获客板块 -->
     <section class="py-12 bg-slate-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                    <!-- 右侧：二维码扫码区 -->
-                    <div class="lg:col-span-5 h-full">
-                        <div class="bg-white rounded-[2rem] p-8 sm:p-10 flex flex-col items-center justify-center text-center h-full shadow-2xl transform hover:scale-[1.02] transition-transform duration-300">
-                            <h4 class="text-2xl font-black text-slate-900 mb-2">立即免费领取</h4>
-                            <p class="text-slate-500 text-sm font-medium mb-8">扫码添加专业顾问，获取以上所有资料</p>
-                            
-                            <!-- 你的二维码：优化了文件名防报错 -->
-                            <div class="bg-slate-50 p-1.5 sm:p-2 rounded-2xl border border-slate-100 mb-6 w-64 h-64 sm:w-80 sm:h-80 shadow-sm shrink-0">
-                                <img src="qrcode.png" alt="领取资料二维码" class="w-full h-full object-cover rounded-xl" />
-                            </div>
-
-                            <p class="text-sm font-bold text-slate-700 mb-1">
-                                    扫码后请说：<span class="text-red-500 bg-red-50 px-2 py-0.5 rounded ml-1">"领取GEO指南"</span>
-                                </p>
-                                <p class="text-xs text-slate-400 mt-1">立即获得专业顾问一对一服务</p>
-                            </div>
-                        </div>
+            <div class="bg-white rounded-[2rem] p-8 sm:p-10 shadow-2xl flex flex-col md:flex-row items-center justify-between" data-aos="zoom-in">
+                <div class="mb-8 md:mb-0 text-center md:text-left">
+                    <h4 class="text-2xl font-black text-slate-900 mb-2">立即免费领取完整分析报告</h4>
+                    <p class="text-slate-500 text-sm font-medium">扫码添加专业顾问，获取以上所有资料及专属定制方案</p>
+                </div>
+                
+                <div class="flex flex-col items-center">
+                    <!-- 你的二维码：优化了文件名防报错 -->
+                    <div class="bg-slate-50 p-1.5 sm:p-2 rounded-2xl border border-slate-100 mb-3 w-40 h-40 shadow-sm shrink-0">
+                        <img src="qrcode.png" alt="领取资料二维码" class="w-full h-full object-cover rounded-xl" onerror="this.src='https://placehold.co/400x400/f8fafc/124360?text=QR+Code'" />
                     </div>
+                    <p class="text-sm font-bold text-slate-700 mb-1">
+                        扫码后请说：<span class="text-red-500 bg-red-50 px-2 py-0.5 rounded ml-1">"领取GEO指南"</span>
+                    </p>
                 </div>
             </div>
         </div>
@@ -287,7 +358,7 @@
     <section class="py-20 md:py-28 bg-white relative border-b border-slate-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <!-- 头部文案 -->
-            <div class="text-center mb-16">
+            <div class="text-center mb-16" data-aos="fade-up">
                 <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[#124360] text-xs font-bold mb-5 border border-blue-100">
                     <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> 企业营销困境
                 </div>
@@ -298,44 +369,52 @@
             <!-- 四大挑战卡片 -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
                 <!-- 卡片 1 -->
-                <div class="bg-white rounded-2xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border-l-[6px] border-l-[#124360] border-y border-r border-slate-100 hover:shadow-[0_20px_40px_rgba(18,67,96,0.08)] transition-all hover:-translate-y-1 text-center group">
-                    <div class="w-14 h-14 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-400 group-hover:text-[#124360] group-hover:bg-blue-50 transition-colors">
-                        <i data-lucide="trending-down" class="w-6 h-6"></i>
+                <div data-aos="fade-up" data-aos-delay="0">
+                    <div class="bg-white rounded-2xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border-l-[6px] border-l-[#124360] border-y border-r border-slate-100 hover:shadow-[0_20px_40px_rgba(18,67,96,0.08)] transition-all hover:-translate-y-1 text-center group h-full">
+                        <div class="w-14 h-14 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-400 group-hover:text-[#124360] group-hover:bg-blue-50 transition-colors">
+                            <i data-lucide="trending-down" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-black text-slate-800 mb-4">传统营销效果断崖式下滑</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">百度竞价成本暴涨，转化率持续下降，ROI越来越低</p>
                     </div>
-                    <h3 class="text-lg font-black text-slate-800 mb-4">传统营销效果断崖式下滑</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">百度竞价成本暴涨，转化率持续下降，ROI越来越低</p>
                 </div>
 
                 <!-- 卡片 2 -->
-                <div class="bg-white rounded-2xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border-l-[6px] border-l-[#124360] border-y border-r border-slate-100 hover:shadow-[0_20px_40px_rgba(18,67,96,0.08)] transition-all hover:-translate-y-1 text-center group">
-                    <div class="w-14 h-14 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-400 group-hover:text-[#124360] group-hover:bg-blue-50 transition-colors">
-                        <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                <div data-aos="fade-up" data-aos-delay="100">
+                    <div class="bg-white rounded-2xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border-l-[6px] border-l-[#124360] border-y border-r border-slate-100 hover:shadow-[0_20px_40px_rgba(18,67,96,0.08)] transition-all hover:-translate-y-1 text-center group h-full">
+                        <div class="w-14 h-14 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-400 group-hover:text-[#124360] group-hover:bg-blue-50 transition-colors">
+                            <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-black text-slate-800 mb-4">流量成本居高不下</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">抖音、小红书投放费用水涨船高，中小企业难以承受</p>
                     </div>
-                    <h3 class="text-lg font-black text-slate-800 mb-4">流量成本居高不下</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">抖音、小红书投放费用水涨船高，中小企业难以承受</p>
                 </div>
 
                 <!-- 卡片 3 -->
-                <div class="bg-white rounded-2xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border-l-[6px] border-l-[#124360] border-y border-r border-slate-100 hover:shadow-[0_20px_40px_rgba(18,67,96,0.08)] transition-all hover:-translate-y-1 text-center group">
-                    <div class="w-14 h-14 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-400 group-hover:text-[#124360] group-hover:bg-blue-50 transition-colors">
-                        <i data-lucide="help-circle" class="w-6 h-6"></i>
+                <div data-aos="fade-up" data-aos-delay="200">
+                    <div class="bg-white rounded-2xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border-l-[6px] border-l-[#124360] border-y border-r border-slate-100 hover:shadow-[0_20px_40px_rgba(18,67,96,0.08)] transition-all hover:-translate-y-1 text-center group h-full">
+                        <div class="w-14 h-14 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-400 group-hover:text-[#124360] group-hover:bg-blue-50 transition-colors">
+                            <i data-lucide="help-circle" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-black text-slate-800 mb-4">不知道客户在哪里</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">客户获取信息的渠道在变，但不知道他们现在在用什么</p>
                     </div>
-                    <h3 class="text-lg font-black text-slate-800 mb-4">不知道客户在哪里</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">客户获取信息的渠道在变，但不知道他们现在在用什么</p>
                 </div>
 
                 <!-- 卡片 4 -->
-                <div class="bg-white rounded-2xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border-l-[6px] border-l-[#124360] border-y border-r border-slate-100 hover:shadow-[0_20px_40px_rgba(18,67,96,0.08)] transition-all hover:-translate-y-1 text-center group">
-                    <div class="w-14 h-14 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-400 group-hover:text-[#124360] group-hover:bg-blue-50 transition-colors">
-                        <i data-lucide="clock" class="w-6 h-6"></i>
+                <div data-aos="fade-up" data-aos-delay="300">
+                    <div class="bg-white rounded-2xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03)] border-l-[6px] border-l-[#124360] border-y border-r border-slate-100 hover:shadow-[0_20px_40px_rgba(18,67,96,0.08)] transition-all hover:-translate-y-1 text-center group h-full">
+                        <div class="w-14 h-14 mx-auto bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-400 group-hover:text-[#124360] group-hover:bg-blue-50 transition-colors">
+                            <i data-lucide="clock" class="w-6 h-6"></i>
+                        </div>
+                        <h3 class="text-lg font-black text-slate-800 mb-4">错过新流量红利</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">看到AI很火，但不知道如何利用AI为品牌获客</p>
                     </div>
-                    <h3 class="text-lg font-black text-slate-800 mb-4">错过新流量红利</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">看到AI很火，但不知道如何利用AI为品牌获客</p>
                 </div>
             </div>
 
-            <!-- 底部根源横幅 (完美衔接下一页的三次革命) -->
-            <div class="bg-gradient-to-r from-[#0c2a3e] via-[#124360] to-[#0a2739] rounded-[2rem] p-8 md:p-12 text-center shadow-[0_20px_50px_rgba(18,67,96,0.2)] relative overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
+            <!-- 底部根源横幅 -->
+            <div data-aos="zoom-in" class="bg-gradient-to-r from-[#0c2a3e] via-[#124360] to-[#0a2739] rounded-[2rem] p-8 md:p-12 text-center shadow-[0_20px_50px_rgba(18,67,96,0.2)] relative overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
                 <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
                 <div class="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 
@@ -345,17 +424,17 @@
         </div>
     </section>
 
-    <!-- 新顺序：消费者信息获取方式的三次革命 -->
+    <!-- 消费者信息获取方式的三次革命 -->
     <section class="py-20 md:py-28 bg-[#FAFAFA] relative border-b border-slate-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16" data-aos="fade-up">
                 <h2 class="text-3xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">消费者信息获取方式的三次革命</h2>
                 <p class="text-lg text-slate-500 font-medium max-w-3xl mx-auto leading-relaxed">每一次信息获取方式的变革，都会重新洗牌商业格局。现在，第三次革命正在发生，您准备好了吗？</p>
             </div>
 
             <div class="relative max-w-5xl mx-auto mt-12">
-                <!-- 桌面端连接线与箭头 (精确计算在图标高度的正中央) -->
-                <div class="hidden md:block absolute top-[4rem] left-[16%] w-[68%] h-[2px] bg-slate-200 z-0">
+                <!-- 桌面端连接线与箭头 -->
+                <div class="hidden md:block absolute top-[4rem] left-[16%] w-[68%] h-[2px] bg-slate-200 z-0" data-aos="fade-in" data-aos-delay="300">
                     <div class="absolute top-1/2 left-[48%] -translate-y-1/2 -translate-x-1/2 bg-[#FAFAFA] px-2 text-slate-300">
                         <i data-lucide="chevron-right" class="w-6 h-6"></i>
                     </div>
@@ -365,50 +444,56 @@
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12 relative z-10">
-                    <!-- 时代 1：搜索引擎 -->
-                    <div class="bg-white rounded-3xl p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300">
-                        <div class="w-16 h-16 mx-auto bg-[#3b82f6] rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30 mb-6">
-                            <i data-lucide="search" class="w-7 h-7 text-white"></i>
+                    <!-- 时代 1 -->
+                    <div data-aos="fade-up" data-aos-delay="0">
+                        <div class="bg-white rounded-3xl p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300 h-full">
+                            <div class="w-16 h-16 mx-auto bg-[#3b82f6] rounded-full flex items-center justify-center shadow-lg shadow-blue-500/30 mb-6">
+                                <i data-lucide="search" class="w-7 h-7 text-white"></i>
+                            </div>
+                            <div class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">2000-2015</div>
+                            <h3 class="text-2xl font-black text-slate-800 mb-4">搜索引擎时代</h3>
+                            <p class="text-slate-500 text-sm leading-relaxed font-medium">用户通过百度、谷歌搜索关键词，企业通过SEO和SEM获客</p>
                         </div>
-                        <div class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">2000-2015</div>
-                        <h3 class="text-2xl font-black text-slate-800 mb-4">搜索引擎时代</h3>
-                        <p class="text-slate-500 text-sm leading-relaxed font-medium">用户通过百度、谷歌搜索关键词，企业通过SEO和SEM获客</p>
                     </div>
 
-                    <!-- 时代 2：社交媒体 -->
-                    <div class="bg-white rounded-3xl p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300 relative">
-                        <div class="md:hidden absolute -top-6 left-1/2 -translate-x-1/2 text-slate-300">
-                            <i data-lucide="arrow-down" class="w-6 h-6"></i>
+                    <!-- 时代 2 -->
+                    <div data-aos="fade-up" data-aos-delay="150">
+                        <div class="bg-white rounded-3xl p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:-translate-y-2 transition-transform duration-300 h-full relative">
+                            <div class="md:hidden absolute -top-6 left-1/2 -translate-x-1/2 text-slate-300">
+                                <i data-lucide="arrow-down" class="w-6 h-6"></i>
+                            </div>
+                            <div class="w-16 h-16 mx-auto bg-[#a855f7] rounded-full flex items-center justify-center shadow-lg shadow-purple-500/30 mb-6">
+                                <i data-lucide="message-circle" class="w-7 h-7 text-white"></i>
+                            </div>
+                            <div class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">2015-2023</div>
+                            <h3 class="text-2xl font-black text-slate-800 mb-4">社交媒体时代</h3>
+                            <p class="text-slate-500 text-sm leading-relaxed font-medium">用户在抖音、小红书获取信息，企业通过内容营销获客</p>
                         </div>
-                        <div class="w-16 h-16 mx-auto bg-[#a855f7] rounded-full flex items-center justify-center shadow-lg shadow-purple-500/30 mb-6">
-                            <i data-lucide="message-circle" class="w-7 h-7 text-white"></i>
-                        </div>
-                        <div class="text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">2015-2023</div>
-                        <h3 class="text-2xl font-black text-slate-800 mb-4">社交媒体时代</h3>
-                        <p class="text-slate-500 text-sm leading-relaxed font-medium">用户在抖音、小红书获取信息，企业通过内容营销获客</p>
                     </div>
 
                     <!-- 时代 3：AI搜索 -->
-                    <div class="bg-white rounded-3xl p-8 text-center shadow-[0_20px_50px_rgba(225,29,72,0.08)] border border-red-100 hover:-translate-y-2 transition-transform duration-300 relative transform md:scale-105">
-                        <div class="md:hidden absolute -top-6 left-1/2 -translate-x-1/2 text-slate-300">
-                            <i data-lucide="arrow-down" class="w-6 h-6"></i>
+                    <div data-aos="fade-up" data-aos-delay="300">
+                        <div class="bg-white rounded-3xl p-8 text-center shadow-[0_20px_50px_rgba(225,29,72,0.08)] border border-red-100 hover:-translate-y-2 transition-transform duration-300 h-full relative transform md:scale-105">
+                            <div class="md:hidden absolute -top-6 left-1/2 -translate-x-1/2 text-slate-300">
+                                <i data-lucide="arrow-down" class="w-6 h-6"></i>
+                            </div>
+                            <div class="w-16 h-16 mx-auto bg-[#e11d48] rounded-full flex items-center justify-center shadow-lg shadow-rose-600/30 mb-6 relative">
+                                <div class="absolute inset-0 rounded-full bg-rose-500 animate-ping opacity-30"></div>
+                                <i data-lucide="bot" class="w-7 h-7 text-white"></i>
+                            </div>
+                            <div class="text-sm font-black text-rose-500 mb-2 uppercase tracking-wider">2023起</div>
+                            <h3 class="text-2xl font-black text-slate-800 mb-4">AI搜索时代</h3>
+                            <p class="text-slate-700 text-sm leading-relaxed font-bold">用户直接向AI提问获取答案，品牌通过GEO在AI答案中获得推荐</p>
                         </div>
-                        <div class="w-16 h-16 mx-auto bg-[#e11d48] rounded-full flex items-center justify-center shadow-lg shadow-rose-600/30 mb-6 relative">
-                            <div class="absolute inset-0 rounded-full bg-rose-500 animate-ping opacity-30"></div>
-                            <i data-lucide="bot" class="w-7 h-7 text-white"></i>
-                        </div>
-                        <div class="text-sm font-black text-rose-500 mb-2 uppercase tracking-wider">2023起</div>
-                        <h3 class="text-2xl font-black text-slate-800 mb-4">AI搜索时代</h3>
-                        <p class="text-slate-700 text-sm leading-relaxed font-bold">用户直接向AI提问获取答案，品牌通过GEO在AI答案中获得推荐</p>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- 新顺序：动态星空环绕板块：横向长宽比 -->
+    <!-- 动态星空环绕板块 -->
     <section class="py-16 md:py-24 bg-white relative">
-        <div class="max-w-[95%] lg:max-w-7xl mx-auto rounded-[2rem] md:rounded-[3rem] relative bg-[#050b14] shadow-[0_20px_60px_rgba(18,67,96,0.1)] border border-slate-200 overflow-hidden">
+        <div data-aos="zoom-in" data-aos-duration="1000" class="max-w-[95%] lg:max-w-7xl mx-auto rounded-[2rem] md:rounded-[3rem] relative bg-[#050b14] shadow-[0_20px_60px_rgba(18,67,96,0.1)] border border-slate-200 overflow-hidden">
             
             <div class="absolute inset-0 z-0 opacity-30" style="background-image: radial-gradient(circle at center, rgba(255,255,255,0.8) 1px, transparent 1px); background-size: 60px 60px; background-position: 0 0, 30px 30px;"></div>
             
@@ -423,7 +508,7 @@
                         
                         <!-- 中心红日发光体 -->
                         <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-gradient-to-br from-[#124360] to-blue-600 rounded-full flex flex-col items-center justify-center text-white shadow-[0_0_80px_20px_rgba(18,67,96,0.6)] z-20 border-[4px] border-blue-400/20">
-                            <span class="text-5xl font-black mb-1 tracking-tight">6.72亿</span>
+                            <span class="text-5xl font-black mb-1 tracking-tight"><span class="counter-value" data-target="6.72" data-decimals="2">0.00</span>亿</span>
                             <span class="text-sm opacity-80 font-bold tracking-widest uppercase">总用户</span>
                         </div>
 
@@ -493,21 +578,23 @@
         </div>
 
         <!-- 高亮青蓝渐变发光数据横幅 -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 relative z-10" data-aos="fade-up">
             <div class="bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl md:rounded-[2rem] p-8 md:p-12 shadow-[0_20px_50px_rgba(6,182,212,0.4)] relative overflow-hidden border border-cyan-400/50">
-                <!-- 装饰光晕 -->
                 <div class="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="absolute bottom-0 left-0 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
                 
-                <!-- 数据三列布局 -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 divide-y md:divide-y-0 md:divide-x divide-white/20 relative z-10">
                     <div class="text-center px-4 hover:-translate-y-1 transition-transform duration-300">
-                        <div class="text-4xl md:text-5xl font-black text-white mb-3 tracking-tight drop-shadow-md">25%</div>
+                        <div class="text-4xl md:text-5xl font-black text-white mb-3 tracking-tight drop-shadow-md">
+                            <span class="counter-value" data-target="25" data-decimals="0">0</span>%
+                        </div>
                         <div class="text-base md:text-lg font-bold text-white mb-2">传统搜索流量将转向AI</div>
                         <div class="text-sm text-cyan-100 font-medium">到2026年 - Gartner预测</div>
                     </div>
                     <div class="text-center px-4 pt-8 md:pt-0 hover:-translate-y-1 transition-transform duration-300">
-                        <div class="text-4xl md:text-5xl font-black text-white mb-3 tracking-tight drop-shadow-md">3倍</div>
+                        <div class="text-4xl md:text-5xl font-black text-white mb-3 tracking-tight drop-shadow-md">
+                            <span class="counter-value" data-target="3" data-decimals="0">0</span>倍
+                        </div>
                         <div class="text-base md:text-lg font-bold text-white mb-2">AI搜索用户增长速度</div>
                         <div class="text-sm text-cyan-100 font-medium">相比传统搜索引擎</div>
                     </div>
@@ -521,11 +608,10 @@
         </div>
     </section>
 
-    <!-- 新顺序：核心概念：什么是GEO -->
+    <!-- 核心概念：什么是GEO -->
     <section id="geo-intro" class="py-20 md:py-28 bg-slate-50 relative border-b border-slate-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <!-- 头部文案 -->
-            <div class="text-center mb-16">
+            <div class="text-center mb-16" data-aos="fade-up">
                 <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-[#124360] text-xs font-bold mb-5 border border-blue-100 shadow-sm">
                     <i data-lucide="lightbulb" class="w-3.5 h-3.5"></i> 核心概念
                 </div>
@@ -533,82 +619,84 @@
                 <p class="text-lg text-slate-500 font-medium max-w-3xl mx-auto leading-relaxed">GEO（Generative Engine Optimization）是针对AI搜索引擎的优化策略，让您的品牌在AI生成的答案中获得权威推荐和精准曝光。</p>
             </div>
 
-            <!-- 对比卡片区 -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
                 
                 <!-- 左侧：传统营销方式 -->
-                <div class="bg-white rounded-[2.5rem] p-8 md:p-10 border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
-                    <div>
-                        <h3 class="text-2xl font-black text-slate-800 mb-8">传统营销方式</h3>
-                        
-                        <div class="space-y-6">
-                            <div class="flex items-start gap-4">
-                                <div class="w-2 h-2 rounded-full bg-slate-300 mt-2.5 shrink-0"></div>
-                                <div>
-                                    <h4 class="text-lg font-bold text-slate-700">投放广告</h4>
-                                    <p class="text-sm text-slate-500 mt-1 font-medium">成本高，效果难以保证</p>
+                <div data-aos="fade-right">
+                    <div class="bg-white rounded-[2.5rem] p-8 md:p-10 border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between h-full">
+                        <div>
+                            <h3 class="text-2xl font-black text-slate-800 mb-8">传统营销方式</h3>
+                            
+                            <div class="space-y-6">
+                                <div class="flex items-start gap-4">
+                                    <div class="w-2 h-2 rounded-full bg-slate-300 mt-2.5 shrink-0"></div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-slate-700">投放广告</h4>
+                                        <p class="text-sm text-slate-500 mt-1 font-medium">成本高，效果难以保证</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="flex items-start gap-4">
-                                <div class="w-2 h-2 rounded-full bg-slate-300 mt-2.5 shrink-0"></div>
-                                <div>
-                                    <h4 class="text-lg font-bold text-slate-700">SEO优化</h4>
-                                    <p class="text-sm text-slate-500 mt-1 font-medium">竞争激烈，排名不稳定</p>
+                                <div class="flex items-start gap-4">
+                                    <div class="w-2 h-2 rounded-full bg-slate-300 mt-2.5 shrink-0"></div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-slate-700">SEO优化</h4>
+                                        <p class="text-sm text-slate-500 mt-1 font-medium">竞争激烈，排名不稳定</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="flex items-start gap-4">
-                                <div class="w-2 h-2 rounded-full bg-slate-300 mt-2.5 shrink-0"></div>
-                                <div>
-                                    <h4 class="text-lg font-bold text-slate-700">内容营销</h4>
-                                    <p class="text-sm text-slate-500 mt-1 font-medium">传播范围有限，转化路径长</p>
+                                <div class="flex items-start gap-4">
+                                    <div class="w-2 h-2 rounded-full bg-slate-300 mt-2.5 shrink-0"></div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-slate-700">内容营销</h4>
+                                        <p class="text-sm text-slate-500 mt-1 font-medium">传播范围有限，转化路径长</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="bg-slate-50 text-slate-500 rounded-xl p-4 mt-10 text-center border border-slate-100 font-bold tracking-wide">
-                        结果：获客成本高，效果不稳定
+                        
+                        <div class="bg-slate-50 text-slate-500 rounded-xl p-4 mt-10 text-center border border-slate-100 font-bold tracking-wide">
+                            结果：获客成本高，效果不稳定
+                        </div>
                     </div>
                 </div>
 
-                <!-- 右侧：GEO营销方式 (全面升级为青蓝渐变高亮卡片) -->
-                <div class="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-[2.5rem] p-8 md:p-10 border border-cyan-400/50 shadow-[0_20px_50px_rgba(6,182,212,0.3)] hover:shadow-[0_20px_60px_rgba(6,182,212,0.5)] transition-all relative overflow-hidden flex flex-col justify-between group transform hover:-translate-y-1">
-                    <div class="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl pointer-events-none group-hover:bg-white/30 transition-colors"></div>
-                    
-                    <div class="relative z-10">
-                        <h3 class="text-2xl font-black text-white mb-8 flex items-center gap-2 drop-shadow-sm">
-                            GEO营销方式
-                            <i data-lucide="sparkles" class="w-5 h-5 text-[#FDE047]"></i>
-                        </h3>
+                <!-- 右侧：GEO营销方式 -->
+                <div data-aos="fade-left">
+                    <div class="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-[2.5rem] p-8 md:p-10 border border-cyan-400/50 shadow-[0_20px_50px_rgba(6,182,212,0.3)] hover:shadow-[0_20px_60px_rgba(6,182,212,0.5)] transition-all relative overflow-hidden flex flex-col justify-between group transform hover:-translate-y-1 h-full">
+                        <div class="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl pointer-events-none group-hover:bg-white/30 transition-colors"></div>
                         
-                        <div class="space-y-6">
-                            <div class="flex items-start gap-4">
-                                <div class="w-2 h-2 rounded-full bg-[#FDE047] mt-2.5 shrink-0 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></div>
-                                <div>
-                                    <h4 class="text-lg font-bold text-white">AI权威推荐</h4>
-                                    <p class="text-sm text-cyan-50 mt-1 font-medium">直接出现在AI答案中</p>
+                        <div class="relative z-10">
+                            <h3 class="text-2xl font-black text-white mb-8 flex items-center gap-2 drop-shadow-sm">
+                                GEO营销方式
+                                <i data-lucide="sparkles" class="w-5 h-5 text-[#FDE047]"></i>
+                            </h3>
+                            
+                            <div class="space-y-6">
+                                <div class="flex items-start gap-4">
+                                    <div class="w-2 h-2 rounded-full bg-[#FDE047] mt-2.5 shrink-0 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-white">AI权威推荐</h4>
+                                        <p class="text-sm text-cyan-50 mt-1 font-medium">直接出现在AI答案中</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="flex items-start gap-4">
-                                <div class="w-2 h-2 rounded-full bg-[#FDE047] mt-2.5 shrink-0 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></div>
-                                <div>
-                                    <h4 class="text-lg font-bold text-white">精准匹配需求</h4>
-                                    <p class="text-sm text-cyan-50 mt-1 font-medium">用户主动咨询相关问题</p>
+                                <div class="flex items-start gap-4">
+                                    <div class="w-2 h-2 rounded-full bg-[#FDE047] mt-2.5 shrink-0 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-white">精准匹配需求</h4>
+                                        <p class="text-sm text-cyan-50 mt-1 font-medium">用户主动咨询相关问题</p>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="flex items-start gap-4">
-                                <div class="w-2 h-2 rounded-full bg-[#FDE047] mt-2.5 shrink-0 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></div>
-                                <div>
-                                    <h4 class="text-lg font-bold text-white">长期有效</h4>
-                                    <p class="text-sm text-cyan-50 mt-1 font-medium">一次优化，持续受益</p>
+                                <div class="flex items-start gap-4">
+                                    <div class="w-2 h-2 rounded-full bg-[#FDE047] mt-2.5 shrink-0 shadow-[0_0_8px_rgba(253,224,71,0.8)]"></div>
+                                    <div>
+                                        <h4 class="text-lg font-bold text-white">长期有效</h4>
+                                        <p class="text-sm text-cyan-50 mt-1 font-medium">一次优化，持续受益</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- 结果小窗口 (纯白高亮，反衬青蓝底色) -->
-                    <div class="bg-white text-blue-600 rounded-xl p-4 mt-10 text-center shadow-[0_10px_20px_rgba(0,0,0,0.15)] font-black text-lg relative z-10 transform group-hover:scale-[1.04] transition-all tracking-wide border border-white/80">
-                        结果：低成本获得高质量客户
+                        
+                        <div class="bg-white text-blue-600 rounded-xl p-4 mt-10 text-center shadow-[0_10px_20px_rgba(0,0,0,0.15)] font-black text-lg relative z-10 transform group-hover:scale-[1.04] transition-all tracking-wide border border-white/80">
+                            结果：低成本获得高质量客户
+                        </div>
                     </div>
                 </div>
 
@@ -616,124 +704,134 @@
         </div>
     </section>
 
-    <!-- 新顺序：核心价值：GEO带来的价值 -->
+    <!-- 核心价值：GEO带来的价值 -->
     <section class="py-20 md:py-28 bg-white relative border-b border-slate-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16" data-aos="fade-up">
                 <h2 class="text-3xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">GEO为您的企业带来的核心价值</h2>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <!-- 价值 1 -->
-                <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300">
-                    <div class="w-16 h-16 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6 relative overflow-hidden">
-                        <div class="absolute inset-0 bg-white/20 blur-sm rounded-full"></div>
-                        <i data-lucide="target" class="w-7 h-7 text-white relative z-10"></i>
+                <div data-aos="fade-up" data-aos-delay="0">
+                    <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 h-full">
+                        <div class="w-16 h-16 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6 relative overflow-hidden">
+                            <div class="absolute inset-0 bg-white/20 blur-sm rounded-full"></div>
+                            <i data-lucide="target" class="w-7 h-7 text-white relative z-10"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-4">抢占决策起点</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">当客户向AI咨询时，您的品牌第一时间被推荐，占据客户心智高地</p>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-4">抢占决策起点</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">当客户向AI咨询时，您的品牌第一时间被推荐，占据客户心智高地</p>
                 </div>
 
-                <!-- 价值 2 -->
-                <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300">
-                    <div class="w-16 h-16 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6 relative overflow-hidden">
-                        <div class="absolute inset-0 bg-white/20 blur-sm rounded-full"></div>
-                        <i data-lucide="shield-check" class="w-7 h-7 text-white relative z-10"></i>
+                <div data-aos="fade-up" data-aos-delay="100">
+                    <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 h-full">
+                        <div class="w-16 h-16 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6 relative overflow-hidden">
+                            <div class="absolute inset-0 bg-white/20 blur-sm rounded-full"></div>
+                            <i data-lucide="shield-check" class="w-7 h-7 text-white relative z-10"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-4">获得AI权威背书</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">让AI成为您的品牌代言人，在客户心中建立专业可信的形象</p>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-4">获得AI权威背书</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">让AI成为您的品牌代言人，在客户心中建立专业可信的形象</p>
                 </div>
 
-                <!-- 价值 3 -->
-                <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300">
-                    <div class="w-16 h-16 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6 relative overflow-hidden">
-                        <div class="absolute inset-0 bg-white/20 blur-sm rounded-full"></div>
-                        <i data-lucide="trending-up" class="w-7 h-7 text-white relative z-10"></i>
+                <div data-aos="fade-up" data-aos-delay="200">
+                    <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 h-full">
+                        <div class="w-16 h-16 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6 relative overflow-hidden">
+                            <div class="absolute inset-0 bg-white/20 blur-sm rounded-full"></div>
+                            <i data-lucide="trending-up" class="w-7 h-7 text-white relative z-10"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-4">精准引流获客</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">直接匹配用户真实需求，获得高意向客户，大幅提升转化率</p>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-4">精准引流获客</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">直接匹配用户真实需求，获得高意向客户，大幅提升转化率</p>
                 </div>
 
-                <!-- 价值 4 -->
-                <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300">
-                    <div class="w-16 h-16 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6 relative overflow-hidden">
-                        <div class="absolute inset-0 bg-white/20 blur-sm rounded-full"></div>
-                        <i data-lucide="users" class="w-7 h-7 text-white relative z-10"></i>
+                <div data-aos="fade-up" data-aos-delay="300">
+                    <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 h-full">
+                        <div class="w-16 h-16 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6 relative overflow-hidden">
+                            <div class="absolute inset-0 bg-white/20 blur-sm rounded-full"></div>
+                            <i data-lucide="users" class="w-7 h-7 text-white relative z-10"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-4">构建竞争壁垒</h3>
+                        <p class="text-slate-500 text-sm leading-relaxed font-medium">在AI生态中建立品类领导者地位，形成难以逾越的竞争优势</p>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-4">构建竞争壁垒</h3>
-                    <p class="text-slate-500 text-sm leading-relaxed font-medium">在AI生态中建立品类领导者地位，形成难以逾越的竞争优势</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- 新增：真实案例数据证明 -->
+    <!-- 真实案例数据证明 -->
     <section id="cases" class="py-20 md:py-24 bg-slate-50 relative border-b border-slate-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16" data-aos="fade-up">
                 <h2 class="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">真实案例</h2>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <!-- 案例数据 1 -->
-                <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(6,182,212,0.1)] hover:-translate-y-2 transition-all duration-300 group">
-                    <div class="w-14 h-14 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i data-lucide="trending-up" class="w-6 h-6 text-blue-600"></i>
+                <div data-aos="zoom-in" data-aos-delay="0">
+                    <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(6,182,212,0.1)] hover:-translate-y-2 transition-all duration-300 group h-full">
+                        <div class="w-14 h-14 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                            <i data-lucide="trending-up" class="w-6 h-6 text-blue-600"></i>
+                        </div>
+                        <div class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600 mb-3 tracking-tight drop-shadow-sm">
+                            <span class="counter-value" data-target="500" data-decimals="0">0</span>%
+                        </div>
+                        <h3 class="text-lg font-black text-slate-800 mb-3">AI搜索曝光量提升</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed font-medium">3个月内品牌在AI答案中出现频次增长5倍</p>
                     </div>
-                    <div class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600 mb-3 tracking-tight drop-shadow-sm">
-                        500%
-                    </div>
-                    <h3 class="text-lg font-black text-slate-800 mb-3">AI搜索曝光量提升</h3>
-                    <p class="text-slate-500 text-xs leading-relaxed font-medium">3个月内品牌在AI答案中出现频次增长5倍</p>
                 </div>
 
                 <!-- 案例数据 2 -->
-                <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(6,182,212,0.1)] hover:-translate-y-2 transition-all duration-300 group">
-                    <div class="w-14 h-14 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i data-lucide="users" class="w-6 h-6 text-blue-600"></i>
+                <div data-aos="zoom-in" data-aos-delay="100">
+                    <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(6,182,212,0.1)] hover:-translate-y-2 transition-all duration-300 group h-full">
+                        <div class="w-14 h-14 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                            <i data-lucide="users" class="w-6 h-6 text-blue-600"></i>
+                        </div>
+                        <div class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600 mb-3 tracking-tight drop-shadow-sm">
+                            <span class="counter-value" data-target="300" data-decimals="0">0</span>%
+                        </div>
+                        <h3 class="text-lg font-black text-slate-800 mb-3">精准客户咨询增长</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed font-medium">高意向客户主动咨询量显著提升</p>
                     </div>
-                    <div class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600 mb-3 tracking-tight drop-shadow-sm">
-                        300%
-                    </div>
-                    <h3 class="text-lg font-black text-slate-800 mb-3">精准客户咨询增长</h3>
-                    <p class="text-slate-500 text-xs leading-relaxed font-medium">高意向客户主动咨询量显著提升</p>
                 </div>
 
                 <!-- 案例数据 3 -->
-                <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(6,182,212,0.1)] hover:-translate-y-2 transition-all duration-300 group">
-                    <div class="w-14 h-14 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i data-lucide="dollar-sign" class="w-6 h-6 text-blue-600"></i>
+                <div data-aos="zoom-in" data-aos-delay="200">
+                    <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(6,182,212,0.1)] hover:-translate-y-2 transition-all duration-300 group h-full">
+                        <div class="w-14 h-14 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                            <i data-lucide="dollar-sign" class="w-6 h-6 text-blue-600"></i>
+                        </div>
+                        <div class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600 mb-3 tracking-tight drop-shadow-sm">
+                            <span class="counter-value" data-target="60" data-decimals="0">0</span>%
+                        </div>
+                        <h3 class="text-lg font-black text-slate-800 mb-3">获客成本降低</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed font-medium">相比传统广告投放，成本大幅下降</p>
                     </div>
-                    <div class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600 mb-3 tracking-tight drop-shadow-sm">
-                        60%
-                    </div>
-                    <h3 class="text-lg font-black text-slate-800 mb-3">获客成本降低</h3>
-                    <p class="text-slate-500 text-xs leading-relaxed font-medium">相比传统广告投放，成本大幅下降</p>
                 </div>
 
                 <!-- 案例数据 4 -->
-                <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(6,182,212,0.1)] hover:-translate-y-2 transition-all duration-300 group">
-                    <div class="w-14 h-14 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i data-lucide="clock" class="w-6 h-6 text-blue-600"></i>
+                <div data-aos="zoom-in" data-aos-delay="300">
+                    <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(6,182,212,0.1)] hover:-translate-y-2 transition-all duration-300 group h-full">
+                        <div class="w-14 h-14 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                            <i data-lucide="clock" class="w-6 h-6 text-blue-600"></i>
+                        </div>
+                        <div class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600 mb-3 tracking-tight drop-shadow-sm">
+                            <span class="counter-value" data-target="24" data-decimals="0">0</span><span class="text-2xl md:text-3xl">小时</span>
+                        </div>
+                        <h3 class="text-lg font-black text-slate-800 mb-3">持续获客</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed font-medium">全天候在AI平台获得品牌推荐</p>
                     </div>
-                    <div class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-500 to-blue-600 mb-3 tracking-tight drop-shadow-sm">
-                        24<span class="text-2xl md:text-3xl">小时</span>
-                    </div>
-                    <h3 class="text-lg font-black text-slate-800 mb-3">持续获客</h3>
-                    <p class="text-slate-500 text-xs leading-relaxed font-medium">全天候在AI平台获得品牌推荐</p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- 新增：一站式解决方案 -->
+    <!-- 一站式解决方案 -->
     <section id="products" class="py-20 md:py-28 bg-white relative border-b border-slate-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="text-center mb-16 flex flex-col items-center">
-                <!-- 醒目的 Logo 植入：极度放大，彻底去白边 -->
+            <div class="text-center mb-16 flex flex-col items-center" data-aos="fade-up">
                 <div class="w-32 h-32 sm:w-48 sm:h-48 bg-white rounded-[2rem] shadow-[0_15px_40px_rgba(0,0,0,0.1)] border border-slate-100 flex items-center justify-center p-0 mb-8 transform hover:scale-105 transition-transform duration-300 overflow-hidden">
-                    <!-- 这里的图片需要和 HTML 文件在同一目录下 -->
-                    <img src="logo.jpg" alt="势途 SHITU Logo" class="w-full h-full object-contain" />
+                    <img src="logo.jpg" alt="势途 SHITU Logo" class="w-full h-full object-contain" onerror="this.src='https://placehold.co/400x400/124360/ffffff?text=SHITU+LOGO'" />
                 </div>
                 <h2 class="text-3xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">势途——GEO一站式解决方案</h2>
                 <p class="text-lg text-slate-500 font-medium max-w-3xl mx-auto leading-relaxed mb-8">从诊断分析到效果优化，我们提供全流程专业服务，让您在AI时代抢占营销先机。</p>
@@ -744,97 +842,100 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <!-- 模块 1 -->
-                <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 flex flex-col">
-                    <div class="w-14 h-14 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6">
-                        <i data-lucide="bar-chart-2" class="w-6 h-6 text-white"></i>
+                <div data-aos="fade-up" data-aos-delay="0">
+                    <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 flex flex-col h-full">
+                        <div class="w-14 h-14 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6">
+                            <i data-lucide="bar-chart-2" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-3 text-center">AI品牌热度检测</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed font-medium mb-6 text-center border-b border-slate-100 pb-6">看看您的品牌在AI搜索中表现如何，找出哪里可以做得更好</p>
+                        <ul class="space-y-3 mt-auto">
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>检查AI是否推荐您的品牌</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>看看竞争对手做得怎么样</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>了解客户都在问什么</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>找到提升的机会</li>
+                        </ul>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-3 text-center">AI品牌热度检测</h3>
-                    <p class="text-slate-500 text-xs leading-relaxed font-medium mb-6 text-center border-b border-slate-100 pb-6">看看您的品牌在AI搜索中表现如何，找出哪里可以做得更好</p>
-                    <ul class="space-y-3 mt-auto">
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>检查AI是否推荐您的品牌</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>看看竞争对手做得怎么样</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>了解客户都在问什么</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>找到提升的机会</li>
-                    </ul>
                 </div>
 
                 <!-- 模块 2 -->
-                <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 flex flex-col">
-                    <div class="w-14 h-14 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6">
-                        <i data-lucide="file-text" class="w-6 h-6 text-white"></i>
+                <div data-aos="fade-up" data-aos-delay="100">
+                    <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 flex flex-col h-full">
+                        <div class="w-14 h-14 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6">
+                            <i data-lucide="file-text" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-3 text-center">专业内容撰写</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed font-medium mb-6 text-center border-b border-slate-100 pb-6">写出AI喜欢的好内容，让AI更愿意推荐您的品牌</p>
+                        <ul class="space-y-3 mt-auto">
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>策划有价值的内容</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>写出专业可信的文章</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>适配不同平台要求</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>定期更新内容</li>
+                        </ul>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-3 text-center">专业内容撰写</h3>
-                    <p class="text-slate-500 text-xs leading-relaxed font-medium mb-6 text-center border-b border-slate-100 pb-6">写出AI喜欢的好内容，让AI更愿意推荐您的品牌</p>
-                    <ul class="space-y-3 mt-auto">
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>策划有价值的内容</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>写出专业可信的文章</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>适配不同平台要求</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>定期更新内容</li>
-                    </ul>
                 </div>
 
                 <!-- 模块 3 -->
-                <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 flex flex-col">
-                    <div class="w-14 h-14 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6">
-                        <i data-lucide="globe" class="w-6 h-6 text-white"></i>
+                <div data-aos="fade-up" data-aos-delay="200">
+                    <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 flex flex-col h-full">
+                        <div class="w-14 h-14 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6">
+                            <i data-lucide="globe" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-3 text-center">全平台信息铺排</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed font-medium mb-6 text-center border-b border-slate-100 pb-6">在重要网站发布内容，让AI能从多个地方看到您的品牌信息</p>
+                        <ul class="space-y-3 mt-auto">
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>选择权威网站发布</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>建立内容发布网络</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>扩大品牌影响力</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>长期维护和优化</li>
+                        </ul>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-3 text-center">全平台信息铺排</h3>
-                    <p class="text-slate-500 text-xs leading-relaxed font-medium mb-6 text-center border-b border-slate-100 pb-6">在重要网站发布内容，让AI能从多个地方看到您的品牌信息</p>
-                    <ul class="space-y-3 mt-auto">
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>选择权威网站发布</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>建立内容发布网络</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>扩大品牌影响力</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>长期维护和优化</li>
-                    </ul>
                 </div>
 
                 <!-- 模块 4 -->
-                <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 flex flex-col">
-                    <div class="w-14 h-14 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6">
-                        <i data-lucide="trending-up" class="w-6 h-6 text-white"></i>
+                <div data-aos="fade-up" data-aos-delay="300">
+                    <div class="bg-white rounded-[2rem] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100 hover:shadow-[0_20px_50px_rgba(18,67,96,0.08)] hover:-translate-y-2 transition-all duration-300 flex flex-col h-full">
+                        <div class="w-14 h-14 mx-auto bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-cyan-500/30 mb-6">
+                            <i data-lucide="trending-up" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <h3 class="text-xl font-black text-slate-800 mb-3 text-center">效果跟踪优化</h3>
+                        <p class="text-slate-500 text-xs leading-relaxed font-medium mb-6 text-center border-b border-slate-100 pb-6">随时查看效果如何，哪里不好就改哪里，确保越做越好</p>
+                        <ul class="space-y-3 mt-auto">
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>随时查看推荐效果</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>定期提供数据报告</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>根据效果调整策略</li>
+                            <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>计算投入产出比</li>
+                        </ul>
                     </div>
-                    <h3 class="text-xl font-black text-slate-800 mb-3 text-center">效果跟踪优化</h3>
-                    <p class="text-slate-500 text-xs leading-relaxed font-medium mb-6 text-center border-b border-slate-100 pb-6">随时查看效果如何，哪里不好就改哪里，确保越做越好</p>
-                    <ul class="space-y-3 mt-auto">
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>随时查看推荐效果</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>定期提供数据报告</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>根据效果调整策略</li>
-                        <li class="flex items-start gap-2 text-sm text-slate-600 font-medium"><div class="w-1.5 h-1.5 rounded-full bg-cyan-500 mt-1.5 shrink-0 shadow-[0_0_5px_rgba(6,182,212,0.8)]"></div>计算投入产出比</li>
-                    </ul>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- 新增：专业服务流程 (浅灰底色) -->
+    <!-- 专业服务流程 -->
     <section class="py-20 md:py-28 bg-slate-50 relative border-b border-slate-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="text-center mb-16">
+            <div class="text-center mb-16" data-aos="fade-up">
                 <h2 class="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">专业服务流程</h2>
             </div>
 
-            <!-- 内置白色圆角超级卡片 -->
             <div class="relative max-w-5xl mx-auto bg-white rounded-[2rem] p-10 md:p-16 shadow-[0_10px_40px_rgba(0,0,0,0.03)] border border-slate-100">
-                <!-- 桌面端连接横线 -->
                 <div class="hidden md:block absolute top-[6.5rem] left-[10%] right-[10%] h-[2px] bg-slate-100 z-0"></div>
 
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-10 md:gap-4 relative z-10">
-                    <!-- Step 1 -->
-                    <div class="text-center group flex flex-col items-center">
+                    <div class="text-center group flex flex-col items-center" data-aos="fade-up" data-aos-delay="0">
                         <div class="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-xl sm:text-2xl font-black text-white mb-6 shadow-lg shadow-cyan-500/30 border-4 border-white group-hover:scale-110 transition-transform duration-300 relative z-10">01</div>
                         <h3 class="text-base sm:text-lg font-black text-slate-800 mb-2">需求调研</h3>
                         <p class="text-slate-500 text-xs sm:text-sm font-medium">深度了解业务</p>
                     </div>
 
-                    <!-- Step 2 -->
-                    <div class="text-center group flex flex-col items-center">
+                    <div class="text-center group flex flex-col items-center" data-aos="fade-up" data-aos-delay="100">
                         <div class="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-xl sm:text-2xl font-black text-white mb-6 shadow-lg shadow-cyan-500/30 border-4 border-white group-hover:scale-110 transition-transform duration-300 relative z-10">02</div>
                         <h3 class="text-base sm:text-lg font-black text-slate-800 mb-2">现状诊断</h3>
                         <p class="text-slate-500 text-xs sm:text-sm font-medium">AI声量分析</p>
                     </div>
 
-                    <!-- Step 3 -->
-                    <div class="text-center group flex flex-col items-center">
+                    <div class="text-center group flex flex-col items-center" data-aos="fade-up" data-aos-delay="200">
                         <div class="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-xl sm:text-2xl font-black text-white mb-6 shadow-lg shadow-cyan-500/30 border-4 border-white group-hover:scale-110 transition-transform duration-300 relative z-10 overflow-hidden">
                             <div class="absolute inset-0 bg-white/20 blur-sm rounded-full"></div>
                             <span class="relative z-10">03</span>
@@ -843,15 +944,13 @@
                         <p class="text-slate-500 text-xs sm:text-sm font-medium">定制优化方案</p>
                     </div>
 
-                    <!-- Step 4 -->
-                    <div class="text-center group flex flex-col items-center">
+                    <div class="text-center group flex flex-col items-center" data-aos="fade-up" data-aos-delay="300">
                         <div class="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-xl sm:text-2xl font-black text-white mb-6 shadow-lg shadow-cyan-500/30 border-4 border-white group-hover:scale-110 transition-transform duration-300 relative z-10">04</div>
                         <h3 class="text-base sm:text-lg font-black text-slate-800 mb-2">执行实施</h3>
                         <p class="text-slate-500 text-xs sm:text-sm font-medium">专业团队操作</p>
                     </div>
 
-                    <!-- Step 5 -->
-                    <div class="text-center group flex flex-col items-center">
+                    <div class="text-center group flex flex-col items-center" data-aos="fade-up" data-aos-delay="400">
                         <div class="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-xl sm:text-2xl font-black text-white mb-6 shadow-lg shadow-cyan-500/30 border-4 border-white group-hover:scale-110 transition-transform duration-300 relative z-10">05</div>
                         <h3 class="text-base sm:text-lg font-black text-slate-800 mb-2">效果优化</h3>
                         <p class="text-slate-500 text-xs sm:text-sm font-medium">持续监测调整</p>
@@ -861,70 +960,78 @@
         </div>
     </section>
 
-    <!-- 高级 Bento Grid 核心优势 (调整回白底) -->
+    <!-- 高级 Bento Grid 核心优势 (增加 Vanilla-Tilt 3D效果和探照灯光效) -->
     <section id="bento" class="py-20 bg-white border-t border-slate-100">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="mb-16 text-center max-w-3xl mx-auto">
+            <div class="mb-16 text-center max-w-3xl mx-auto" data-aos="fade-up">
                 <h2 class="text-4xl md:text-5xl font-black text-slate-900 mb-6 tracking-tight">重构搜索规则。<br/>掌控 AI 的回答。</h2>
                 <p class="text-xl text-slate-500 font-medium">不再为了点击率发愁，让大模型直接把您的品牌作为“标准答案”呈现给客户。</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[320px]">
                 <!-- 品牌深色块 1 -->
-                <div class="md:col-span-2 bg-[#124360] rounded-[2rem] p-10 relative overflow-hidden group shadow-xl border border-[#0a2739] transition-all hover:shadow-[0_20px_60px_rgba(18,67,96,0.2)]">
-                    <div class="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-400/20 transition-all"></div>
-                    <div class="relative z-10 h-full flex flex-col justify-between">
-                        <div class="w-16 h-16 bg-white/10 text-cyan-400 rounded-2xl flex items-center justify-center border border-white/10">
-                            <i data-lucide="target" class="w-8 h-8"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-3xl font-black text-white mb-4">AI 意图拦截与语料垄断</h3>
-                            <p class="text-blue-100/80 text-lg max-w-lg leading-relaxed font-medium">
-                                洞察行业高优意图词，在全网高权重节点部署高质量“投喂语料”，让大模型在学习时深刻绑定您的品牌。
-                            </p>
+                <div data-aos="fade-up" data-aos-delay="0" class="md:col-span-2 h-full">
+                    <div data-tilt data-tilt-max="3" data-tilt-speed="400" data-tilt-glare="true" data-tilt-max-glare="0.2" class="glow-capture bg-[#124360] rounded-[2rem] p-10 relative overflow-hidden group shadow-xl border border-transparent h-full transition-shadow hover:shadow-[0_20px_60px_rgba(18,67,96,0.3)] bg-clip-padding">
+                        <div class="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-400/20 transition-all pointer-events-none"></div>
+                        <div class="relative z-10 h-full flex flex-col justify-between pointer-events-none">
+                            <div class="w-16 h-16 bg-white/10 text-cyan-400 rounded-2xl flex items-center justify-center border border-white/10">
+                                <i data-lucide="target" class="w-8 h-8"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-3xl font-black text-white mb-4">AI 意图拦截与语料垄断</h3>
+                                <p class="text-blue-100/80 text-lg max-w-lg leading-relaxed font-medium">
+                                    洞察行业高优意图词，在全网高权重节点部署高质量“投喂语料”，让大模型在学习时深刻绑定您的品牌。
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 品牌深色块 2 -->
-                <div class="bg-[#124360] rounded-[2rem] p-10 border border-[#0a2739] shadow-xl hover:shadow-[0_20px_60px_rgba(18,67,96,0.2)] transition-all flex flex-col justify-between relative overflow-hidden group">
-                    <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-400/20 transition-all"></div>
-                    <div class="w-14 h-14 bg-white/10 text-cyan-400 rounded-2xl flex items-center justify-center border border-white/10 relative z-10">
-                        <i data-lucide="shield-check" class="w-7 h-7"></i>
-                    </div>
-                    <div class="relative z-10">
-                        <h3 class="text-2xl font-black text-white mb-3">声誉与幻觉治理</h3>
-                        <p class="text-blue-100/80 font-medium leading-relaxed">修复大模型生成的过时或负面信息，重塑 AI 视角的正面声誉。</p>
+                <div data-aos="fade-up" data-aos-delay="100" class="h-full">
+                    <div data-tilt data-tilt-max="5" data-tilt-speed="400" data-tilt-glare="true" data-tilt-max-glare="0.2" class="glow-capture bg-[#124360] rounded-[2rem] p-10 border border-transparent shadow-xl transition-shadow hover:shadow-[0_20px_60px_rgba(18,67,96,0.3)] flex flex-col justify-between relative overflow-hidden group h-full bg-clip-padding">
+                        <div class="absolute -bottom-10 -right-10 w-40 h-40 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-400/20 transition-all pointer-events-none"></div>
+                        <div class="w-14 h-14 bg-white/10 text-cyan-400 rounded-2xl flex items-center justify-center border border-white/10 relative z-10 pointer-events-none">
+                            <i data-lucide="shield-check" class="w-7 h-7"></i>
+                        </div>
+                        <div class="relative z-10 pointer-events-none">
+                            <h3 class="text-2xl font-black text-white mb-3">声誉与幻觉治理</h3>
+                            <p class="text-blue-100/80 font-medium leading-relaxed">修复大模型生成的过时或负面信息，重塑 AI 视角的正面声誉。</p>
+                        </div>
                     </div>
                 </div>
 
                 <!-- 品牌深色块 3 -->
-                <div class="bg-[#124360] rounded-[2rem] p-10 border border-[#0a2739] shadow-xl hover:shadow-[0_20px_60px_rgba(18,67,96,0.2)] transition-all flex flex-col justify-between relative overflow-hidden group">
-                    <div class="absolute -top-10 -left-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-400/20 transition-all"></div>
-                    <div class="w-14 h-14 bg-white/10 text-cyan-400 rounded-2xl flex items-center justify-center border border-white/10 relative z-10">
-                        <i data-lucide="bar-chart-3" class="w-7 h-7"></i>
-                    </div>
-                    <div class="relative z-10">
-                        <h3 class="text-2xl font-black text-white mb-3">数据驱动追踪</h3>
-                        <p class="text-blue-100/80 font-medium leading-relaxed">实时监控 8 大主流模型提及率，效果清晰可视化，让转化有迹可循。</p>
+                <div data-aos="fade-up" data-aos-delay="200" class="h-full">
+                    <div data-tilt data-tilt-max="5" data-tilt-speed="400" data-tilt-glare="true" data-tilt-max-glare="0.2" class="glow-capture bg-[#124360] rounded-[2rem] p-10 border border-transparent shadow-xl transition-shadow hover:shadow-[0_20px_60px_rgba(18,67,96,0.3)] flex flex-col justify-between relative overflow-hidden group h-full bg-clip-padding">
+                        <div class="absolute -top-10 -left-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-400/20 transition-all pointer-events-none"></div>
+                        <div class="w-14 h-14 bg-white/10 text-cyan-400 rounded-2xl flex items-center justify-center border border-white/10 relative z-10 pointer-events-none">
+                            <i data-lucide="bar-chart-3" class="w-7 h-7"></i>
+                        </div>
+                        <div class="relative z-10 pointer-events-none">
+                            <h3 class="text-2xl font-black text-white mb-3">数据驱动追踪</h3>
+                            <p class="text-blue-100/80 font-medium leading-relaxed">实时监控 8 大主流模型提及率，效果清晰可视化，让转化有迹可循。</p>
+                        </div>
                     </div>
                 </div>
 
                 <!-- 品牌深色块 4 -->
-                <div class="md:col-span-2 bg-gradient-to-br from-[#0c2a3e] to-[#124360] rounded-[2rem] p-10 border border-[#0a2739] shadow-xl relative overflow-hidden group">
-                    <div class="absolute bottom-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl group-hover:bg-cyan-400/20 transition-all pointer-events-none"></div>
-                    <div class="relative z-10 h-full flex flex-col justify-between">
-                        <div class="w-16 h-16 bg-white/10 text-cyan-400 rounded-2xl flex items-center justify-center border border-white/10 shadow-lg">
-                            <i data-lucide="rocket" class="w-8 h-8"></i>
-                        </div>
-                        <div>
-                            <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-bold text-cyan-300 mb-5 border border-white/20 shadow-sm">
-                                传统 SEO 已死
+                <div data-aos="fade-up" data-aos-delay="300" class="md:col-span-2 h-full">
+                    <div data-tilt data-tilt-max="3" data-tilt-speed="400" data-tilt-glare="true" data-tilt-max-glare="0.2" class="glow-capture bg-gradient-to-br from-[#0c2a3e] to-[#124360] rounded-[2rem] p-10 border border-transparent shadow-xl relative overflow-hidden group h-full transition-shadow hover:shadow-[0_20px_60px_rgba(18,67,96,0.3)] bg-clip-padding">
+                        <div class="absolute bottom-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl group-hover:bg-cyan-400/20 transition-all pointer-events-none"></div>
+                        <div class="relative z-10 h-full flex flex-col justify-between pointer-events-none">
+                            <div class="w-16 h-16 bg-white/10 text-cyan-400 rounded-2xl flex items-center justify-center border border-white/10 shadow-lg">
+                                <i data-lucide="rocket" class="w-8 h-8"></i>
                             </div>
-                            <h3 class="text-3xl font-black text-white mb-4">降维打击竞争对手</h3>
-                            <p class="text-blue-100/80 text-lg max-w-lg font-medium leading-relaxed">
-                                当对手还在卷网页排名时，您已经通过势途占据了 AI 聊天的核心推荐位。这是目前转化率最高的用户触点。
-                            </p>
+                            <div>
+                                <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-bold text-cyan-300 mb-5 border border-white/20 shadow-sm pointer-events-auto">
+                                    传统 SEO 已死
+                                </div>
+                                <h3 class="text-3xl font-black text-white mb-4">降维打击竞争对手</h3>
+                                <p class="text-blue-100/80 text-lg max-w-lg font-medium leading-relaxed">
+                                    当对手还在卷网页排名时，您已经通过势途占据了 AI 聊天的核心推荐位。这是目前转化率最高的用户触点。
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -932,17 +1039,14 @@
         </div>
     </section>
 
-    <!-- 终极转化区：最后的免费领取机会 (高奢科技版) -->
+    <!-- 终极转化区 -->
     <section id="contact" class="py-24 bg-slate-50 border-t border-slate-100 relative">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <!-- 升级为高亮发光青蓝渐变 -->
-            <div class="bg-gradient-to-r from-cyan-500 to-blue-600 rounded-[3rem] p-6 sm:p-10 lg:p-12 shadow-[0_30px_60px_rgba(6,182,212,0.4)] border border-cyan-400/50 relative overflow-hidden">
-                <!-- 装饰光晕背景 -->
+            <div data-aos="zoom-in" class="bg-gradient-to-r from-cyan-500 to-blue-600 rounded-[3rem] p-6 sm:p-10 lg:p-12 shadow-[0_30px_60px_rgba(6,182,212,0.4)] border border-cyan-400/50 relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-96 h-96 bg-white/20 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="absolute bottom-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 mix-blend-overlay"></div>
 
-                <!-- 头部标题：提亮文字颜色 -->
                 <div class="text-center mb-12 relative z-10">
                     <div class="inline-flex items-center justify-center gap-2 mb-4">
                         <i data-lucide="gift" class="w-8 h-8 md:w-10 md:h-10 text-white animate-pulse"></i>
@@ -953,99 +1057,100 @@
                     </p>
                 </div>
 
-                <!-- 三栏转化卡片 -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center relative z-10">
                     
-                    <!-- 左侧：您将免费获得 (玻璃拟态) -->
-                    <div class="bg-white/5 backdrop-blur-xl rounded-[2rem] p-8 border border-white/10 h-full hover:bg-white/10 transition-colors">
-                        <h3 class="text-xl font-black text-white mb-8 flex items-center gap-3">
-                            <i data-lucide="check-circle-2" class="w-6 h-6 text-cyan-200"></i>
-                            您将免费获得
-                        </h3>
-                        <div class="space-y-6">
-                            <div class="flex items-start gap-4">
-                                <div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center shrink-0 border border-cyan-400/30">
-                                    <i data-lucide="book" class="w-4 h-4 text-cyan-200"></i>
-                                </div>
-                                <div>
-                                    <div class="text-white font-black text-lg mb-0.5">《GEO营销新手指南》</div>
-                                    <div class="text-cyan-100 text-sm font-bold tracking-wide">价值999元</div>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4">
-                                <div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center shrink-0 border border-cyan-400/30">
-                                    <i data-lucide="user-check" class="w-4 h-4 text-cyan-200"></i>
-                                </div>
-                                <div>
-                                    <div class="text-white font-black text-lg mb-0.5">1对1专业顾问指导</div>
-                                    <div class="text-cyan-100 text-sm font-bold tracking-wide">无门槛咨询服务</div>
-                                </div>
-                            </div>
-                            <div class="flex items-start gap-4">
-                                <div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center shrink-0 border border-cyan-400/30">
-                                    <i data-lucide="activity" class="w-4 h-4 text-cyan-200"></i>
-                                </div>
-                                <div>
-                                    <div class="text-white font-black text-lg mb-0.5">免费GEO品牌诊断</div>
-                                    <div class="text-cyan-100 text-sm font-bold tracking-wide">价值2000元</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 中间：核心扫码区 (纯白高亮突出) -->
-                    <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.3)] transform lg:scale-110 relative z-20 border-4 border-white/20 bg-clip-padding">
-                        <h3 class="text-xl font-black text-slate-800 mb-6 flex items-center justify-center gap-2">
-                            <i data-lucide="smartphone" class="w-6 h-6 text-[#124360]"></i>
-                            立即扫码领取
-                        </h3>
-                        
-                        <!-- 你的二维码：优化了文件名防报错 -->
-                        <div class="bg-slate-50 p-1.5 sm:p-2 rounded-2xl border border-slate-100 mb-6 w-full max-w-[280px] sm:max-w-[320px] aspect-square mx-auto shadow-inner">
-                            <img src="qrcode.png" alt="立即领取二维码" class="w-full h-full object-cover rounded-xl" />
-                        </div>
-
-                        <div class="text-red-500 font-black text-lg mb-4 tracking-tight">
-                            限时免费 · 原价值<span class="line-through text-slate-400 font-bold ml-1">2999元</span>
-                        </div>
-                        
-                        <div class="bg-gradient-to-r from-amber-100 to-yellow-50 text-amber-800 font-black py-3 px-4 rounded-xl text-sm border border-amber-200 shadow-sm">
-                            扫码后请说：<span class="text-red-500 bg-white px-2 py-0.5 rounded shadow-sm ml-1">"领取GEO指南"</span>
-                        </div>
-                    </div>
-
-                    <!-- 右侧：信任背书 (玻璃拟态，提亮小字) -->
-                    <div class="bg-white/5 backdrop-blur-xl rounded-[2rem] p-8 border border-white/10 h-full hover:bg-white/10 transition-colors flex flex-col justify-between">
-                        <div>
+                    <div data-aos="fade-up" data-aos-delay="0" class="h-full">
+                        <div class="bg-white/5 backdrop-blur-xl rounded-[2rem] p-8 border border-white/10 h-full hover:bg-white/10 transition-colors">
                             <h3 class="text-xl font-black text-white mb-8 flex items-center gap-3">
-                                <i data-lucide="award" class="w-6 h-6 text-[#FDE047]"></i>
-                                为什么选择势途
+                                <i data-lucide="check-circle-2" class="w-6 h-6 text-cyan-200"></i>
+                                您将免费获得
                             </h3>
-                            <ul class="space-y-4">
-                                <li class="flex items-center gap-3 text-white font-bold tracking-wide drop-shadow-sm">
-                                    <i data-lucide="rocket" class="w-5 h-5 text-cyan-200 shrink-0"></i> 已助力500+品牌AI推荐
-                                </li>
-                                <li class="flex items-center gap-3 text-white font-bold tracking-wide drop-shadow-sm">
-                                    <i data-lucide="trending-down" class="w-5 h-5 text-cyan-200 shrink-0"></i> 获客成本降低70%
-                                </li>
-                                <li class="flex items-center gap-3 text-white font-bold tracking-wide drop-shadow-sm">
-                                    <i data-lucide="target" class="w-5 h-5 text-cyan-200 shrink-0"></i> 转化率提升3倍
-                                </li>
-                                <li class="flex items-center gap-3 text-white font-bold tracking-wide drop-shadow-sm">
-                                    <i data-lucide="flame" class="w-5 h-5 text-cyan-200 shrink-0"></i> 6.72亿AI用户覆盖
-                                </li>
-                            </ul>
+                            <div class="space-y-6">
+                                <div class="flex items-start gap-4">
+                                    <div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center shrink-0 border border-cyan-400/30">
+                                        <i data-lucide="book" class="w-4 h-4 text-cyan-200"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-white font-black text-lg mb-0.5">《GEO营销新手指南》</div>
+                                        <div class="text-cyan-100 text-sm font-bold tracking-wide">价值999元</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-4">
+                                    <div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center shrink-0 border border-cyan-400/30">
+                                        <i data-lucide="user-check" class="w-4 h-4 text-cyan-200"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-white font-black text-lg mb-0.5">1对1专业顾问指导</div>
+                                        <div class="text-cyan-100 text-sm font-bold tracking-wide">无门槛咨询服务</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-start gap-4">
+                                    <div class="w-8 h-8 rounded-full bg-cyan-500/20 flex items-center justify-center shrink-0 border border-cyan-400/30">
+                                        <i data-lucide="activity" class="w-4 h-4 text-cyan-200"></i>
+                                    </div>
+                                    <div>
+                                        <div class="text-white font-black text-lg mb-0.5">免费GEO品牌诊断</div>
+                                        <div class="text-cyan-100 text-sm font-bold tracking-wide">价值2000元</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        
-                        <div class="mt-8 text-center text-sm font-bold text-[#FDE047] bg-white/10 py-3 rounded-xl border border-white/20 shadow-sm flex items-center justify-center gap-2 backdrop-blur-sm">
-                            <i data-lucide="users" class="w-4 h-4"></i> 已有 3,000+ 企业领取
+                    </div>
+
+                    <div data-aos="fade-up" data-aos-delay="100" class="h-full relative z-20">
+                        <div class="bg-white rounded-[2rem] p-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.3)] transform lg:scale-110 border-4 border-white/20 bg-clip-padding h-full flex flex-col justify-center">
+                            <h3 class="text-xl font-black text-slate-800 mb-6 flex items-center justify-center gap-2">
+                                <i data-lucide="smartphone" class="w-6 h-6 text-[#124360]"></i>
+                                立即扫码领取
+                            </h3>
+                            
+                            <div class="bg-slate-50 p-1.5 sm:p-2 rounded-2xl border border-slate-100 mb-6 w-full max-w-[280px] sm:max-w-[320px] aspect-square mx-auto shadow-inner">
+                                <img src="qrcode.png" alt="立即领取二维码" class="w-full h-full object-cover rounded-xl" onerror="this.src='https://placehold.co/400x400/f8fafc/124360?text=QR+Code'" />
+                            </div>
+
+                            <div class="text-red-500 font-black text-lg mb-4 tracking-tight">
+                                限时免费 · 原价值<span class="line-through text-slate-400 font-bold ml-1">2999元</span>
+                            </div>
+                            
+                            <div class="bg-gradient-to-r from-amber-100 to-yellow-50 text-amber-800 font-black py-3 px-4 rounded-xl text-sm border border-amber-200 shadow-sm">
+                                扫码后请说：<span class="text-red-500 bg-white px-2 py-0.5 rounded shadow-sm ml-1">"领取GEO指南"</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div data-aos="fade-up" data-aos-delay="200" class="h-full">
+                        <div class="bg-white/5 backdrop-blur-xl rounded-[2rem] p-8 border border-white/10 h-full hover:bg-white/10 transition-colors flex flex-col justify-between">
+                            <div>
+                                <h3 class="text-xl font-black text-white mb-8 flex items-center gap-3">
+                                    <i data-lucide="award" class="w-6 h-6 text-[#FDE047]"></i>
+                                    为什么选择势途
+                                </h3>
+                                <ul class="space-y-4">
+                                    <li class="flex items-center gap-3 text-white font-bold tracking-wide drop-shadow-sm">
+                                        <i data-lucide="rocket" class="w-5 h-5 text-cyan-200 shrink-0"></i> 已助力500+品牌AI推荐
+                                    </li>
+                                    <li class="flex items-center gap-3 text-white font-bold tracking-wide drop-shadow-sm">
+                                        <i data-lucide="trending-down" class="w-5 h-5 text-cyan-200 shrink-0"></i> 获客成本降低70%
+                                    </li>
+                                    <li class="flex items-center gap-3 text-white font-bold tracking-wide drop-shadow-sm">
+                                        <i data-lucide="target" class="w-5 h-5 text-cyan-200 shrink-0"></i> 转化率提升3倍
+                                    </li>
+                                    <li class="flex items-center gap-3 text-white font-bold tracking-wide drop-shadow-sm">
+                                        <i data-lucide="flame" class="w-5 h-5 text-cyan-200 shrink-0"></i> 6.72亿AI用户覆盖
+                                    </li>
+                                </ul>
+                            </div>
+                            
+                            <div class="mt-8 text-center text-sm font-bold text-[#FDE047] bg-white/10 py-3 rounded-xl border border-white/20 shadow-sm flex items-center justify-center gap-2 backdrop-blur-sm">
+                                <i data-lucide="users" class="w-4 h-4"></i> 已有 <span class="counter-value inline-block w-10 text-left" data-target="3000" data-decimals="0">0</span>+ 企业领取
+                            </div>
                         </div>
                     </div>
 
                 </div>
             </div>
 
-            <!-- 版权信息 (加粗提亮) -->
+            <!-- 版权信息 -->
             <div class="mt-16 text-center">
                 <p class="text-slate-500 font-black tracking-widest text-sm uppercase">
                     &copy; <span id="year"></span> SHITU 势途 GEO 优化. 保留所有权利.
@@ -1054,10 +1159,9 @@
         </div>
     </section>
 
-    <!-- 扫码加好友弹窗 Modal (全面升级青蓝科技风) -->
+    <!-- 扫码加好友弹窗 Modal -->
     <div id="qr-modal" class="hidden fixed inset-0 z-[100] items-center justify-center bg-slate-900/60 backdrop-blur-md p-4">
-        <div class="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-[2.5rem] p-8 md:p-10 max-w-md w-full text-center shadow-[0_20px_60px_rgba(6,182,212,0.5)] border border-cyan-400/50 relative overflow-hidden animate-in fade-in zoom-in duration-300">
-            <!-- 装饰光晕 -->
+        <div class="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-[2.5rem] p-8 md:p-10 max-w-md w-full text-center shadow-[0_20px_60px_rgba(6,182,212,0.5)] border border-cyan-400/50 relative overflow-hidden transform scale-95 opacity-0 transition-all duration-300" id="modal-content">
             <div class="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl pointer-events-none"></div>
             
             <button onclick="closeModal()" class="absolute top-5 right-5 text-white/80 hover:text-white transition-colors bg-black/10 hover:bg-black/20 rounded-full p-2 backdrop-blur-sm z-10">
@@ -1073,9 +1177,8 @@
                 扫描下方专家二维码，<br/>免费领取 <strong id="modal-company-name" class="text-[#FDE047] text-lg mx-1 drop-shadow-sm">贵公司</strong> 的 AI 引擎诊断报告
             </p>
             
-            <!-- 弹窗内部二维码：优化了文件名防报错 -->
             <div class="bg-white p-2 w-64 h-64 mx-auto rounded-2xl flex items-center justify-center mb-6 shadow-[0_10px_30px_rgba(0,0,0,0.2)] relative z-10 border-2 border-white/50 bg-clip-padding">
-                <img src="qrcode.png" alt="微信二维码" class="w-full h-full object-cover rounded-xl" />
+                <img src="qrcode.png" alt="微信二维码" class="w-full h-full object-cover rounded-xl" onerror="this.src='https://placehold.co/400x400/f8fafc/124360?text=QR+Code'" />
             </div>
             
             <p class="text-sm text-cyan-50 font-medium relative z-10">
@@ -1084,38 +1187,108 @@
         </div>
     </div>
 
+    <!-- 引入动画库脚本 -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.0/vanilla-tilt.min.js"></script>
+    
     <!-- 交互逻辑脚本 -->
     <script>
-        // 初始化 Lucide 图标
+        // 1. 初始化 Lucide 图标
         lucide.createIcons();
 
-        // 自动设置年份
+        // 2. 自动设置年份
         document.getElementById('year').innerText = new Date().getFullYear();
 
-        // 页面滚动监听：控制导航栏样式
+        // 3. 页面滚动监听：控制导航栏样式与智能显隐
+        let lastScrollY = window.scrollY;
+        const navbar = document.getElementById('navbar');
+
         window.addEventListener('scroll', () => {
-            if (window.scrollY > 20) {
+            const currentScrollY = window.scrollY;
+
+            if (currentScrollY > 20) {
                 document.body.classList.add('scrolled');
             } else {
                 document.body.classList.remove('scrolled');
             }
+
+            if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                navbar.classList.add('navbar-hidden');
+            } else {
+                navbar.classList.remove('navbar-hidden');
+            }
+
+            lastScrollY = currentScrollY;
         });
 
-        // 弹窗逻辑
+        // 4. 初始化 AOS 滚动动画库
+        AOS.init({
+            duration: 800, 
+            once: false,   
+            offset: 50      
+        });
+
+        // 5. 纯 JS 动态数字滚动监听
+        const duration = 2000;
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const targetEl = entry.target;
+                const target = parseFloat(targetEl.getAttribute('data-target'));
+                const decimals = parseInt(targetEl.getAttribute('data-decimals')) || 0;
+
+                if (entry.isIntersecting) {
+                    let startTimestamp = null;
+                    
+                    const step = (timestamp) => {
+                        if (!startTimestamp) startTimestamp = timestamp;
+                        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                        const easeOut = progress * (2 - progress);
+                        const currentVal = (easeOut * target).toFixed(decimals);
+                        
+                        targetEl.innerText = currentVal;
+                        
+                        if (progress < 1) {
+                            targetEl.dataset.rafId = window.requestAnimationFrame(step);
+                        } else {
+                            targetEl.innerText = target.toFixed(decimals);
+                        }
+                    };
+                    cancelAnimationFrame(targetEl.dataset.rafId);
+                    targetEl.dataset.rafId = window.requestAnimationFrame(step);
+                } else {
+                    cancelAnimationFrame(targetEl.dataset.rafId);
+                    targetEl.innerText = (0).toFixed(decimals);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        document.querySelectorAll('.counter-value').forEach(counter => {
+            observer.observe(counter);
+        });
+
+        // 6. 弹窗逻辑
         const modal = document.getElementById('qr-modal');
+        const modalContent = document.getElementById('modal-content');
         const companyNameSpan = document.getElementById('modal-company-name');
 
         function openModal() {
             modal.classList.remove('hidden');
             modal.classList.add('flex');
+            setTimeout(() => {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }, 10);
         }
 
         function closeModal() {
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
         }
 
-        // 处理表单提交
         document.querySelectorAll('.diagnose-form').forEach(form => {
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -1125,19 +1298,17 @@
             });
         });
 
-        // 移动端菜单控制
+        // 7. 移动端菜单控制
         const mobileBtn = document.getElementById('mobile-menu-btn');
         const mobileMenu = document.getElementById('mobile-menu');
 
         mobileBtn.addEventListener('click', () => {
             if (mobileMenu.classList.contains('hidden')) {
-                // 打开菜单
                 mobileMenu.classList.remove('hidden');
                 mobileMenu.classList.add('flex');
                 mobileBtn.innerHTML = '<i data-lucide="x" class="w-7 h-7"></i>';
                 lucide.createIcons();
             } else {
-                // 关闭菜单
                 mobileMenu.classList.add('hidden');
                 mobileMenu.classList.remove('flex');
                 mobileBtn.innerHTML = '<i data-lucide="menu" class="w-7 h-7"></i>';
@@ -1145,7 +1316,6 @@
             }
         });
 
-        // 点击移动端链接后自动关闭菜单
         document.querySelectorAll('.mobile-link').forEach(link => {
             link.addEventListener('click', () => {
                 mobileMenu.classList.add('hidden');
@@ -1154,6 +1324,231 @@
                 lucide.createIcons();
             });
         });
+
+        // 8. 全局背景光点与点击动效 (Canvas 粒子系统)
+        const canvas = document.getElementById('ambient-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resizeCanvas() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        const particles = [];
+        const numAmbientParticles = 60;
+
+        class Particle {
+            constructor(x, y, isBurst = false) {
+                this.x = x !== undefined ? x : Math.random() * width;
+                this.y = y !== undefined ? y : Math.random() * height;
+                this.r = isBurst ? Math.random() * 2 + 1.5 : Math.random() * 1.5 + 0.5;
+                
+                const speedMult = isBurst ? 6 : 0.3;
+                const angle = Math.random() * Math.PI * 2;
+                
+                this.vx = Math.cos(angle) * (Math.random() * speedMult + (isBurst ? 2 : 0.1));
+                this.vy = Math.sin(angle) * (Math.random() * speedMult + (isBurst ? 2 : 0.1));
+                
+                this.baseAlpha = isBurst ? 1 : Math.random() * 0.4 + 0.1;
+                this.alpha = this.baseAlpha;
+                this.isBurst = isBurst;
+                this.life = isBurst ? 1.0 : Infinity; 
+                this.pulseSpeed = Math.random() * 0.015 + 0.005;
+                this.pulseDir = 1;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (!this.isBurst) {
+                    if (this.x < 0 || this.x > width) this.vx *= -1;
+                    if (this.y < 0 || this.y > height) this.vy *= -1;
+
+                    this.alpha += this.pulseSpeed * this.pulseDir;
+                    if (this.alpha > 0.6) this.pulseDir = -1;
+                    if (this.alpha < 0.1) this.pulseDir = 1;
+                    
+                    if (Math.abs(this.vx) > 0.5 || Math.abs(this.vy) > 0.5) {
+                        this.vx *= 0.96;
+                        this.vy *= 0.96;
+                    }
+                } else {
+                    this.life -= 0.025;
+                    this.alpha = Math.max(0, this.life);
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                ctx.shadowBlur = this.isBurst ? 15 : 8;
+                ctx.shadowColor = `rgba(6, 182, 212, ${this.alpha + 0.2})`; 
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < numAmbientParticles; i++) {
+            particles.push(new Particle());
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, width, height);
+            
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw();
+                if (p.isBurst && p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        window.addEventListener('click', (e) => {
+            const cx = e.clientX;
+            const cy = e.clientY;
+            
+            for (let i = 0; i < 12; i++) {
+                particles.push(new Particle(cx, cy, true));
+            }
+
+            particles.forEach(p => {
+                if (!p.isBurst) {
+                    const dx = p.x - cx;
+                    const dy = p.y - cy;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 200) {
+                        const force = (200 - dist) / 200; 
+                        p.vx += (dx / dist) * force * 6;
+                        p.vy += (dy / dist) * force * 6;
+                    }
+                }
+            });
+        });
+
+        // 9. AI 乱码解码特效 (Text Scramble)
+        class TextScramble {
+            constructor(el) {
+                this.el = el;
+                this.chars = '!<>-_\\\\/[]{}—=+*^?#_010110';
+                this.update = this.update.bind(this);
+            }
+            setText(newText) {
+                const oldText = this.el.innerText;
+                const length = Math.max(oldText.length, newText.length);
+                const promise = new Promise((resolve) => this.resolve = resolve);
+                this.queue = [];
+                for (let i = 0; i < length; i++) {
+                    const from = oldText[i] || '';
+                    const to = newText[i] || '';
+                    const start = Math.floor(Math.random() * 40);
+                    const end = start + Math.floor(Math.random() * 40);
+                    this.queue.push({ from, to, start, end });
+                }
+                cancelAnimationFrame(this.frameRequest);
+                this.frame = 0;
+                this.update();
+                return promise;
+            }
+            update() {
+                let output = '';
+                let complete = 0;
+                for (let i = 0, n = this.queue.length; i < n; i++) {
+                    let { from, to, start, end, char } = this.queue[i];
+                    if (this.frame >= end) {
+                        complete++;
+                        output += to;
+                    } else if (this.frame >= start) {
+                        if (!char || Math.random() < 0.28) {
+                            char = this.randomChar();
+                            this.queue[i].char = char;
+                        }
+                        output += `<span class="text-slate-500 opacity-80">${char}</span>`;
+                    } else {
+                        output += from;
+                    }
+                }
+                this.el.innerHTML = output;
+                if (complete === this.queue.length) {
+                    this.resolve();
+                } else {
+                    this.frameRequest = requestAnimationFrame(this.update);
+                    this.frame++;
+                }
+            }
+            randomChar() {
+                return this.chars[Math.floor(Math.random() * this.chars.length)];
+            }
+        }
+
+        const phrases = document.querySelectorAll('[data-scramble]');
+        const scramblers = Array.from(phrases).map(el => {
+            const text = el.getAttribute('data-scramble');
+            el.innerText = ''; 
+            return { instance: new TextScramble(el), text: text };
+        });
+
+        setTimeout(() => {
+            scramblers.forEach((obj, index) => {
+                setTimeout(() => {
+                    obj.instance.setText(obj.text);
+                }, index * 800);
+            });
+        }, 300);
+
+        // 10. 高级磁性光标逻辑
+        if (window.matchMedia("(pointer: fine)").matches) {
+            const dot = document.querySelector('.custom-cursor-dot');
+            const ring = document.querySelector('.custom-cursor-ring');
+            
+            // 只有当节点真正存在时才启动相关逻辑，防止报错
+            if (dot && ring) {
+                let mouseX = window.innerWidth / 2;
+                let mouseY = window.innerHeight / 2;
+                let ringX = mouseX;
+                let ringY = mouseY;
+
+                window.addEventListener('mousemove', (e) => {
+                    mouseX = e.clientX;
+                    mouseY = e.clientY;
+                    dot.style.transform = `translate(calc(${mouseX}px - 50%), calc(${mouseY}px - 50%))`;
+                });
+
+                const renderCursor = () => {
+                    ringX += (mouseX - ringX) * 0.15; 
+                    ringY += (mouseY - ringY) * 0.15;
+                    ring.style.transform = `translate(calc(${ringX}px - 50%), calc(${ringY}px - 50%))`;
+                    requestAnimationFrame(renderCursor);
+                };
+                requestAnimationFrame(renderCursor);
+
+                const interactables = document.querySelectorAll('a, button, input, .glass-panel, .glow-capture');
+                interactables.forEach(el => {
+                    el.addEventListener('mouseenter', () => ring.classList.add('hovered'));
+                    el.addEventListener('mouseleave', () => ring.classList.remove('hovered'));
+                });
+            }
+        }
+
+        // 11. 探照灯边框特效 (Glow Tracking)
+        const glowCards = document.querySelectorAll('.glow-capture');
+        glowCards.forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top; 
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+
     </script>
 </body>
 </html>
